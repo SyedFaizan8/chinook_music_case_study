@@ -15862,7 +15862,7 @@ with temp as
     , rank() over(order by count(1) desc) as rnk
     from Album alb
     group by alb.artistid)
-	
+
 select art.name as artist_name, t.no_of_albums
 from temp t
 join artist art on art.artistid = t.artistid
@@ -15884,22 +15884,22 @@ where g.name in ('Jazz', 'Rock', 'Pop')
 
 -- 3) Find the employee who has supported the most no of customers. Display the employee name and designation
 with cte as (
-select 
-	concat(e.firstname,' ', e.lastname) fullname, 
-	e.employeeid id, 
-	e.title title, 
-	count(*) cnt, 
-	rank() over(order by count(2) desc) rnk 
+select
+	concat(e.firstname,' ', e.lastname) fullname,
+	e.employeeid id,
+	e.title title,
+	count(*) cnt,
+	rank() over(order by count(2) desc) rnk
 from employee e
 join customer c on e.employeeid=c.supportrepid
 group by e.employeeid)
 
-select fullname, id, title from cte 
+select fullname, id, title from cte
 where rnk=1
- 
+
 -- 4) Which city corresponds to the best customers?
 with cte as (
-select c.city, sum(i.total) total, rank() over(order by sum(i.total) desc) rn 
+select c.city, sum(i.total) total, rank() over(order by sum(i.total) desc) rn
 from customer c join invoice i on c.customerid=i.customerid
 group by 1)
 
@@ -15909,20 +15909,20 @@ where rn=1
 -- 5) The highest number of invoices belongs to which country?
 
 with cte as (
-	select billingcountry country, 
-	count(1), 
-	rank() over(order by count(1) desc) rn 
+	select billingcountry country,
+	count(1),
+	rank() over(order by count(1) desc) rn
 from invoice
 group by 1)
 select * from cte
 where rn=1
 
--- limit wont work if there is duplicates 
+-- limit wont work if there is duplicates
 
 -- 6) Name the best customer (customer who spent the most money).
 with cte as (
-	select concat(c.firstname,' ',c.lastname) name, 
-	sum(i.total) sm, 
+	select concat(c.firstname,' ',c.lastname) name,
+	sum(i.total) sm,
 	rank() over(order by sum(i.total) desc) rn
 from customer c join invoice i on c.customerid=i.customerid
 group by 1)
@@ -15931,9 +15931,9 @@ select name from cte
 where rn=1
 
 -- 7) Suppose you want to host a rock concert in a city and want to know which location should host it.
-	with cte as 
-	(select 
-		i.billingcity city, 
+	with cte as
+	(select
+		i.billingcity city,
 		count(i.billingcity) cnt,
 		rank() over(order by count(i.billingcity) desc) rnk
 	from invoice i
@@ -15945,30 +15945,30 @@ where rn=1
 
 	select city from cte
 	where rnk=1
-	
+
 
 -- 8) Identify all the albums who have less then 5 track under them.
     -- Display the album name, artist name and the no of tracks in the respective album.
-	select 
-		al.title album_name, 
-		a.name artist_name,  
+	select
+		al.title album_name,
+		a.name artist_name,
 		count(t.trackid) no_of_tracks
 	from artist a
 	join album al on a.artistid=al.artistid
 	join track t on t.albumid=al.albumid
 	group by 1,2
 	having count(1)<5
-	
+
 
 -- 9) Display the track, album, artist and the genre for all tracks which are not purchased.
 -- corelated sub query is outer query is related to outer query
 select *
-from artist a 
+from artist a
 join album al on a.artistid=al.artistid
 join track t on al.albumid = t.albumid
 join genre g on g.genreid= t.genreid
 where not exists (
-	select * from invoiceline i1 
+	select * from invoiceline i1
 	where i1.trackid=t.trackid
 )
 
@@ -15993,16 +15993,16 @@ join cte on cte.artist_name=cte2.artist_name
 
 -- 11) Which is the most popular and least popular genre?
 with cte as (
-  select 
-    g.name genre_name, 
+  select
+    g.name genre_name,
     count(*) track_count,
-	rank() over(order by count(1) desc) rank_desc, 
+	rank() over(order by count(1) desc) rank_desc,
 	rank() over(order by count(1) asc) rank_asc
   from track t
   join genre g on t.genreid = g.genreid
   group by g.name
 )
-select 
+select
   genre_name,
   track_count,
   case
@@ -16019,7 +16019,7 @@ with avg_total as (
   select avg(total) avg_total
   from invoice
 )
-select 
+select
   t.name track_name,
   al.title album_title,
   a.name artist_name,
@@ -16037,6 +16037,32 @@ where i.total > (select avg_total from avg_total);
     -- [Reason: Now that we know that our customers love rock music, we can decide which musicians to invite to play at the concert.
     -- Lets invite the artists who have written the most rock music in our dataset.]
 
+with x as 
+	(select g.name, count(1) as no_of_purchases, 
+	rank() over(order by count(1) desc) as rnk
+	from InvoiceLine il
+	join track t on t.trackid = il.trackid
+	join genre g on g.genreid = t.genreid
+	group by g.name
+	order by 2 desc),
+most_popular_genre as
+	(select name as genre
+	from x where rnk = 1),
+all_data as
+	(select art.name as artist_name, count(1) as no_of_songs, 
+	rank() over(order by count(1) desc) as rnk
+	from track t
+	join album al on al.albumid = t.albumid
+	join artist art on art.artistid = al.artistid
+	join genre g on g.genreid = t.genreid
+	where g.name in (select genre from most_popular_genre)
+	group by art.name
+	order by 2 desc)
+select artist_name, no_of_songs
+from all_data
+where rnk <= 5;
+
+
 -- 14) Find the artist who has contributed with the maximum no of songs/tracks. Display the artist name and the no of songs.
 with cte as (select a.name name, count(t.name) no_of_songs, rank() over(order by count(t.name) desc) rnk
 from artist a
@@ -16048,18 +16074,16 @@ select name, no_of_songs from cte
 where rnk=1
 
 -- 15) Are there any albums owned by multiple artist?
-
 select albumid
 from album
 group by albumid
 having count(albumid)>1
- 
+
 -- 16) Is there any invoice which is issued to a non existing customer?
-select * 
+select *
 from invoice i
 where not exists (
-select * from customer c where c.customerid=i.customerid
-)
+select * from customer c where c.customerid=i.customerid)
 
 -- 17) Is there any invoice line for a non existing invoice?
 select * from invoiceline il
@@ -16070,3 +16094,8 @@ select * from album al
 where title is null
 
 -- 19) Are there invalid tracks in the playlist?
+select * from PlaylistTrack pt -- result is 0 which means that all tracks in the playlist do exist hence all are valid
+where not exists 
+	(select 1 from Track t 
+     where t.trackid = pt.trackid)
+
