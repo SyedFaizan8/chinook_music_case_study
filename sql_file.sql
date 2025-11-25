@@ -16037,8 +16037,8 @@ where i.total > (select avg_total from avg_total);
     -- [Reason: Now that we know that our customers love rock music, we can decide which musicians to invite to play at the concert.
     -- Lets invite the artists who have written the most rock music in our dataset.]
 
-with x as 
-	(select g.name, count(1) as no_of_purchases, 
+with x as
+	(select g.name, count(1) as no_of_purchases,
 	rank() over(order by count(1) desc) as rnk
 	from InvoiceLine il
 	join track t on t.trackid = il.trackid
@@ -16049,7 +16049,7 @@ most_popular_genre as
 	(select name as genre
 	from x where rnk = 1),
 all_data as
-	(select art.name as artist_name, count(1) as no_of_songs, 
+	(select art.name as artist_name, count(1) as no_of_songs,
 	rank() over(order by count(1) desc) as rnk
 	from track t
 	join album al on al.albumid = t.albumid
@@ -16095,7 +16095,9 @@ where title is null
 
 -- 19) Are there invalid tracks in the playlist?
 select * from PlaylistTrack pt -- result is 0 which means that all tracks in the playlist do exist hence all are valid
-where not exists 
-	(select 1 from Track t 
+where not exists
+	(select 1 from Track t
      where t.trackid = pt.trackid)
+
+--- end of the list
 
